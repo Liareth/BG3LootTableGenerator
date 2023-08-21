@@ -164,7 +164,7 @@ record ItemEntry(string Name, string? Inheritance, string MapKey, string Path, I
             return Data.Stats;
         }
 
-        foreach (string candidate in Inheritance?.Split(':').Skip(1) ?? Enumerable.Empty<string>())
+        foreach (string candidate in Inheritance?.Split(':').Reverse().Skip(1) ?? Enumerable.Empty<string>())
         {
             ItemEntry? parent = entries.First(x => candidate == x.Name); // TODO: Should be MapKey to be safe?
             if (!string.IsNullOrWhiteSpace(parent.Data.Stats)) return parent.Data.Stats;
