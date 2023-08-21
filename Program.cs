@@ -124,8 +124,18 @@ void Run(CmdlineOptions options)
     foreach (ItemEntry armour in armoursWithoutStats)
     {
         string statsName = $"LIA_GENERATED_{armour.Name}";
-        generatedArmourTxt.Add($"new entry \"{statsName}\"\ndata \"RootTemplate\" \"{armour.MapKey}\"\n");
-        armourStatNames.Add(statsName);
+        string? inheritedStats = armour.GetStats(_entries.Values);
+        if (!string.IsNullOrWhiteSpace(inheritedStats))
+        {
+            generatedArmourTxt.Add(
+                $"new entry \"{statsName}\"\n" +
+                $"type \"Armor\"\n" +
+                $"using \"{armour.GetStats(_entries.Values)}\"\n" +
+                $"data \"RootTemplate\" \"{armour.MapKey}\"\n" +
+                $"data \"Unique\" \"0\"\n");
+
+            armourStatNames.Add(statsName);
+        }
     }
 
     List<string> generatedTreasureTxt = new() { "new treasuretable \"TUT_Chest_Potions\"\nCanMerge 1" };
@@ -146,6 +156,23 @@ IEnumerable<string> GetAllRootTemplates(string dir)
 record ItemEntry(string Name, string? Inheritance, string MapKey, string Path, ItemEntryData Data, ItemEntryLocalization Localization)
 {
     public bool InheritsFrom(string name) => Inheritance?.Split(':').Any(x => x == name) ?? false;
+
+    public string? GetStats(IEnumerable<ItemEntry> entries)
+    {
+        if (!string.IsNullOrWhiteSpace(Data.Stats))
+        {
+            return Data.Stats;
+        }
+
+        foreach (string candidate in Inheritance?.Split(':').Skip(1) ?? Enumerable.Empty<string>())
+        {
+            ItemEntry? parent = entries.First(x => candidate == x.Name); // TODO: Should be MapKey to be safe?
+            if (!string.IsNullOrWhiteSpace(parent.Data.Stats)) return parent.Data.Stats;
+        }
+
+        Console.WriteLine($"Warning: Couldn't find stats for {Name} / {MapKey}");
+        return null;
+    }
 }
 
 record ItemEntryData(string? ParentTemplateId, string? VisualTemplateId, string? Stats, string? Icon);
