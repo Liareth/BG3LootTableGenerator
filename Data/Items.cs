@@ -10,7 +10,10 @@ public partial class Items
 
     public Items(IEnumerable<string> loadOrder, Localization localization, Tags tags)
     {
-        foreach (string filePath in loadOrder.SelectMany(x => Util.GetAllTemplates(Path.Combine(Config.SourceDir, x, "RootTemplates"))))
+        // First pass: load all items, and their data, from root templates.
+        foreach (string filePath in loadOrder
+            .SelectMany(x => Util.GetAllTemplates(Path.Combine(Config.SourceDir, x, "RootTemplates")))
+            .Progress("Loading item templates"))
         {
             IEnumerable<XElement> elements = XDocument.Load(filePath).Root!.XPathSelectElements(
                 "region[@id = 'Templates']/node/children/node[@id = 'GameObjects'][attribute[@id='Type' and @value='item']]");
@@ -21,24 +24,15 @@ public partial class Items
                 string? GetAttributeValue(string id) => GetAttribute(id, "value");
                 string? GetAttributeHandle(string id) => GetAttribute(id, "handle");
 
-                string? mapKey = GetAttributeValue("MapKey");
-                string? name = GetAttributeValue("Name");
-
-                if (string.IsNullOrEmpty(mapKey) || string.IsNullOrEmpty(name))
-                {
-                    Console.WriteLine($"Error (invalid root template) in {filePath}");
-                    continue;
-                }
-
+                string mapKey = GetAttributeValue("MapKey")!;
+                string name = GetAttributeValue("Name")!;
                 string? parent = GetAttributeValue("ParentTemplateId");
-
                 string? displayName = GetAttributeHandle("DisplayName");
-                if (displayName != null) localization.Entries.TryGetValue(displayName, out displayName);
-
                 string? technicalDescription = GetAttributeHandle("TechnicalDescription");
-                if (technicalDescription != null) localization.Entries.TryGetValue(technicalDescription, out technicalDescription);
-
                 string? description = GetAttributeHandle("Description");
+
+                if (displayName != null) localization.Entries.TryGetValue(displayName, out displayName);
+                if (technicalDescription != null) localization.Entries.TryGetValue(technicalDescription, out technicalDescription);
                 if (description != null) localization.Entries.TryGetValue(description, out description);
 
                 List<string> itemTags = new();
@@ -69,7 +63,8 @@ public partial class Items
             }
         }
 
-        foreach ((string k, Entry v) in _entries)
+        // Second pass: modify every item to add resolved data using data from other items.
+        foreach ((string k, Entry v) in _entries.Progress("Resolving item data"))
         {
             List<string> itemParents = new();
             List<string> itemTags = new();
