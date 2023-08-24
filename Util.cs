@@ -18,9 +18,10 @@ public static class Util
 
 public class ProgressTracker : IDisposable
 {
+    private static readonly DateTimeOffset _start = DateTimeOffset.UtcNow;
+
     private readonly string _label;
     private readonly TimeSpan _interval;
-    private readonly DateTimeOffset _start = DateTimeOffset.UtcNow;
     private DateTimeOffset _lastUpdate = DateTimeOffset.MinValue;
 
     public ProgressTracker(string label, TimeSpan? interval = null)
@@ -45,7 +46,7 @@ public class ProgressTracker : IDisposable
     }
 
     private string GetElapsedTime()
-        => $"[+{(DateTimeOffset.UtcNow - _start).TotalSeconds:F2}s]";
+        => $"[+{(DateTimeOffset.UtcNow - _start).Duration().TotalSeconds:F2}s]";
 }
 
 public static class ProgressTrackerExtension
